@@ -53,4 +53,4 @@ Write-Host "Tworzę GitHub Release $tag..."
 gh release create $tag $apkSrc --repo $Repo --title $tag --notes $Changelog --latest
 if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }
 
-Write-Host "Gotowe. OTA URL: https://raw.githubusercontent.com/$Repo/main/updates/version.json" -ForegroundColor Green
+Write-Host "Gotowe. OTA URL: https://raw.githubusercontent.com/$Repo/master/updates/version.json" -ForegroundColor Green

@@ -16,7 +16,7 @@ gradlew.bat assembleRelease
 APK: `app\build\outputs\apk\release\app-release.apk`
 
 Repo OTA: https://github.com/mateusz-brzozowski/radiowezel-dzwonek  
-Domyślny `version.json`: https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/main/updates/version.json
+Domyślny `version.json`: https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/version.json
 
 ### Publikacja nowej wersji (OTA)
 

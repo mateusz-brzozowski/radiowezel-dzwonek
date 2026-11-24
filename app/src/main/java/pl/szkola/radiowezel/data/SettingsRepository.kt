@@ -14,7 +14,7 @@ private val Context.dataStore by preferencesDataStore("settings")
 
 object OtaDefaults {
     const val VERSION_JSON_URL =
-        "https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/main/updates/version.json"
+        "https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/version.json"
 }
 
 data class AppSettings(
