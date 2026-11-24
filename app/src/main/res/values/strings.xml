@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Radiowęzeł Dzwonek</string>
+    <string name="notification_channel_bell">Dzwonek</string>
+    <string name="notification_channel_status">Status usługi</string>
+    <string name="playing_bell">Trwa dzwonek</string>
+    <string name="service_ready">Radiowęzeł gotowy</string>
+</resources>
