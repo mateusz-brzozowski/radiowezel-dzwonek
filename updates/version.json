@@ -2,6 +2,6 @@
   "versionCode": 3,
   "versionName": "1.1.0",
   "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.1.0/app-release.apk",
-  "force": true,
-  "changelog": "Harmonogram 8 lekcji (wiosna/chopin 30s), pickery godziny i daty, poprawki baterii i UI"
+  "force": false,
+  "changelog": "Harmonogram 8 lekcji — force OTA wyłączone (naprawa pętli instalacji)"
 }
