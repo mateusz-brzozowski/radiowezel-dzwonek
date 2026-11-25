@@ -2,7 +2,7 @@ package pl.szkola.radiowezel.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -10,60 +10,87 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-private val DeepTeal = Color(0xFF1B3A4B)
-private val AccentCoral = Color(0xFFC45C26)
-private val Sand = Color(0xFFF2F0EA)
-private val Ink = Color(0xFF1A1A1A)
+val PanelBg = Color(0xFF14161C)
+val PanelRaised = Color(0xFF1C1F28)
+val PanelLine = Color(0xFF2E3340)
+val Ink = Color(0xFFE8E6E1)
+val InkDim = Color(0xFF9A9AA3)
+val Amber = Color(0xFFFFB020)
+val Signal = Color(0xFF3CB371)
+val Warn = Color(0xFFE85D4C)
 
-private val LightColors = lightColorScheme(
-    primary = DeepTeal,
-    onPrimary = Color.White,
-    secondary = AccentCoral,
-    onSecondary = Color.White,
-    background = Sand,
+private val Colors = darkColorScheme(
+    primary = Amber,
+    onPrimary = Color(0xFF1A1200),
+    secondary = Signal,
+    onSecondary = Color(0xFF04140A),
+    background = PanelBg,
     onBackground = Ink,
-    surface = Color(0xFFFAF8F3),
+    surface = PanelRaised,
     onSurface = Ink,
-    surfaceVariant = Color(0xFFE4E0D6),
-    onSurfaceVariant = Color(0xFF3D3D3D)
+    surfaceVariant = Color(0xFF252934),
+    onSurfaceVariant = InkDim,
+    outline = PanelLine,
+    error = Warn,
+    onError = Color.White
 )
 
-private val AppTypography = Typography(
-    headlineLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
+private val Type = Typography(
+    displayLarge = TextStyle(
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp
+        fontSize = 48.sp,
+        letterSpacing = (-1).sp
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp
+        fontSize = 22.sp
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp
+        fontSize = 18.sp
+    ),
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 16.sp
+        fontSize = 15.sp,
+        lineHeight = 22.sp
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontSize = 14.sp
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        color = InkDim
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp
+        fontSize = 13.sp,
+        letterSpacing = 1.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontSize = 11.sp,
+        letterSpacing = 1.2.sp
     )
 )
 
 @Composable
 fun RadiowezelTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = LightColors,
-        typography = AppTypography,
+        colorScheme = Colors,
+        typography = Type,
         content = content
     )
 }

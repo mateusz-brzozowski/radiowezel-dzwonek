@@ -18,6 +18,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -27,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,6 +40,10 @@ import pl.szkola.radiowezel.ui.screens.ScheduleScreen
 import pl.szkola.radiowezel.ui.screens.SettingsScreen
 import pl.szkola.radiowezel.ui.screens.StatusScreen
 import pl.szkola.radiowezel.ui.screens.TracksScreen
+import pl.szkola.radiowezel.ui.theme.Amber
+import pl.szkola.radiowezel.ui.theme.InkDim
+import pl.szkola.radiowezel.ui.theme.PanelBg
+import pl.szkola.radiowezel.ui.theme.PanelLine
 import pl.szkola.radiowezel.ui.theme.RadiowezelTheme
 
 class MainActivity : ComponentActivity() {
@@ -86,59 +92,57 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Scaffold(
+                    containerColor = PanelBg,
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                     bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(
-                                selected = route == "status",
-                                onClick = { navController.navigate("status") { launchSingleTop = true } },
-                                icon = { Icon(Icons.Default.Home, null) },
-                                label = { Text("Status") }
+                        NavigationBar(
+                            containerColor = PanelBg,
+                            contentColor = Amber,
+                            tonalElevation = 0.dp
+                        ) {
+                            val colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Amber,
+                                selectedTextColor = Amber,
+                                indicatorColor = PanelLine,
+                                unselectedIconColor = InkDim,
+                                unselectedTextColor = InkDim
                             )
-                            NavigationBarItem(
-                                selected = route == "schedule",
-                                onClick = { navController.navigate("schedule") { launchSingleTop = true } },
-                                icon = { Icon(Icons.Default.CalendarMonth, null) },
-                                label = { Text("Plan") }
+                            data class Tab(val id: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+                            val tabs = listOf(
+                                Tab("status", "Status", Icons.Default.Home),
+                                Tab("schedule", "Plan", Icons.Default.CalendarMonth),
+                                Tab("tracks", "Utwory", Icons.Default.LibraryMusic),
+                                Tab("holidays", "Święta", Icons.Default.EventBusy),
+                                Tab("settings", "Ustaw.", Icons.Default.Settings)
                             )
-                            NavigationBarItem(
-                                selected = route == "tracks",
-                                onClick = { navController.navigate("tracks") { launchSingleTop = true } },
-                                icon = { Icon(Icons.Default.LibraryMusic, null) },
-                                label = { Text("Utwory") }
-                            )
-                            NavigationBarItem(
-                                selected = route == "holidays",
-                                onClick = { navController.navigate("holidays") { launchSingleTop = true } },
-                                icon = { Icon(Icons.Default.EventBusy, null) },
-                                label = { Text("Święta") }
-                            )
-                            NavigationBarItem(
-                                selected = route == "settings",
-                                onClick = { navController.navigate("settings") { launchSingleTop = true } },
-                                icon = { Icon(Icons.Default.Settings, null) },
-                                label = { Text("Ustawienia") }
-                            )
+                            tabs.forEach { tab ->
+                                NavigationBarItem(
+                                    selected = route == tab.id,
+                                    onClick = {
+                                        navController.navigate(tab.id) {
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(tab.icon, null) },
+                                    label = { Text(tab.label) },
+                                    colors = colors
+                                )
+                            }
                         }
                     }
                 ) { padding ->
-                    Box(Modifier.padding(padding).fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .padding(padding)
+                            .fillMaxSize()
+                    ) {
                         NavHost(navController, startDestination = "status") {
-                            composable("status") {
-                                StatusScreen(state, viewModel)
-                            }
-                            composable("schedule") {
-                                ScheduleScreen(state, viewModel)
-                            }
-                            composable("tracks") {
-                                TracksScreen(state, viewModel)
-                            }
-                            composable("holidays") {
-                                HolidaysScreen(state, viewModel)
-                            }
-                            composable("settings") {
-                                SettingsScreen(state, viewModel)
-                            }
+                            composable("status") { StatusScreen(state, viewModel) }
+                            composable("schedule") { ScheduleScreen(state, viewModel) }
+                            composable("tracks") { TracksScreen(state, viewModel) }
+                            composable("holidays") { HolidaysScreen(state, viewModel) }
+                            composable("settings") { SettingsScreen(state, viewModel) }
                         }
                     }
                 }

@@ -44,6 +44,10 @@ $versionJson = @"
 Set-Content "updates\version.json" $versionJson -Encoding utf8
 
 Write-Host "Commit + push version.json i kodu..."
+$env:GIT_AUTHOR_NAME = "mateusz-brzozowski"
+$env:GIT_AUTHOR_EMAIL = "mateusz-brzozowski@users.noreply.github.com"
+$env:GIT_COMMITTER_NAME = "mateusz-brzozowski"
+$env:GIT_COMMITTER_EMAIL = "mateusz-brzozowski@users.noreply.github.com"
 git add -A
 git status
 git commit -m "release: $tag ($VersionCode)"

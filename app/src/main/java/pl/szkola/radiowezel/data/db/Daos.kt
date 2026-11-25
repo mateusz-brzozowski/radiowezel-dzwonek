@@ -27,6 +27,9 @@ interface BellEventDao {
 
     @Delete
     suspend fun delete(event: BellEventEntity)
+
+    @Query("DELETE FROM bell_events")
+    suspend fun deleteAll()
 }
 
 @Dao

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.szkola.radiowezel.RadiowezelApp
 import pl.szkola.radiowezel.data.AppSettings
+import pl.szkola.radiowezel.data.SchoolSchedule
 import pl.szkola.radiowezel.data.db.BellEventEntity
 import pl.szkola.radiowezel.data.db.BellType
 import pl.szkola.radiowezel.data.db.HolidayEntity
@@ -104,8 +105,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         timeMinutes: Int,
         type: BellType,
         trackId: Long?,
-        durationSeconds: Int,
-        enabled: Boolean
+        durationSeconds: Int
     ) {
         viewModelScope.launch {
             db.bellEventDao().upsert(
@@ -115,13 +115,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     type = type,
                     trackId = trackId,
                     durationSeconds = durationSeconds,
-                    enabled = enabled
+                    enabled = true
                 )
             )
             BellScheduler(getApplication()).rescheduleAll()
             refreshStatus()
             extras.update { it.copy(snackbar = "Zapisano dzwonek") }
         }
+    }
+
+    fun applySchoolSchedule() {
+        viewModelScope.launch {
+            applySchoolScheduleInternal()
+            extras.update { it.copy(snackbar = "Wczytano harmonogram lekcji (8× start + 8× koniec przerwy)") }
+            refreshStatus()
+        }
+    }
+
+    suspend fun applySchoolScheduleInternal() {
+        val tracks = db.trackDao().getAll()
+        db.bellEventDao().deleteAll()
+        SchoolSchedule.buildEvents(tracks).forEach { db.bellEventDao().upsert(it) }
+        settingsRepo.setScheduleTemplateVersion(SchoolSchedule.TEMPLATE_VERSION)
+        BellScheduler(getApplication()).rescheduleAll()
     }
 
     fun deleteEvent(event: BellEventEntity) {
@@ -137,7 +153,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val file = TrackStorage.importFromUri(getApplication(), uri, name)
                 db.trackDao().insert(TrackEntity(name = name, filePath = file.absolutePath))
-                extras.update { it.copy(snackbar = "Dodano utwór: $name") }
+                val lower = name.lowercase()
+                if (lower.contains("wiosna") || lower.contains("chopin")) {
+                    applySchoolScheduleInternal()
+                    extras.update { it.copy(snackbar = "Dodano $name i odświeżono plan lekcji") }
+                } else {
+                    extras.update { it.copy(snackbar = "Dodano utwór: $name") }
+                }
+                refreshStatus()
             } catch (e: Exception) {
                 extras.update { it.copy(snackbar = "Błąd importu: ${e.message}") }
             }
@@ -181,9 +204,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val track = trackId?.let { db.trackDao().getById(it) }
                 ?: db.trackDao().getAll().firstOrNull()
+            val path = track?.filePath
+            val fileOk = path != null && File(path).exists() && File(path).length() > 0
+            if (!fileOk) {
+                extras.update {
+                    it.copy(
+                        snackbar = if (track == null) {
+                            "Brak utworów — dodaj MP3 w zakładce Utwory (zagra sygnał testowy)."
+                        } else {
+                            "Plik utworu nie istnieje na dysku — zaimportuj ponownie."
+                        }
+                    )
+                }
+            } else {
+                extras.update { it.copy(snackbar = "Odtwarzam: ${track?.name}") }
+            }
             BellPlayerService.play(
                 context = getApplication(),
-                trackPath = track?.filePath,
+                trackPath = if (fileOk) path else null,
                 durationSec = durationSeconds,
                 title = "Test dzwonka"
             )

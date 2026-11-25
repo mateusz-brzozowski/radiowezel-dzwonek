@@ -39,7 +39,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Device Owner ustawiony dla $Package" -ForegroundColor Green
-& $adb shell dpm list-owners
+& $adb shell dumpsys device_policy | Select-String -Pattern "Device Owner|pl.szkola" | Select-Object -First 10
+# Android 8+: allow Lock Task / kiosk for this package
+& $adb shell dpm set-lock-task-packages --user current $Package 2>$null
 Write-Host "Uruchamiam aplikację..."
 & $adb shell am start -n "$Package/.MainActivity"
 Write-Host "Gotowe. W Ustawieniach aplikacji włącz tryb kiosku (Lock Task)."

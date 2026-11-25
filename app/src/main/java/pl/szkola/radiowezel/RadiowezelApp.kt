@@ -6,7 +6,9 @@ import android.app.NotificationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import pl.szkola.radiowezel.data.SchoolSchedule
 import pl.szkola.radiowezel.data.SettingsRepository
 import pl.szkola.radiowezel.data.db.AppDatabase
 import pl.szkola.radiowezel.ota.UpdateChecker
@@ -28,6 +30,7 @@ class RadiowezelApp : Application() {
         ensureChannels()
         applicationScope.launch {
             seedHolidaysIfNeeded()
+            applySchoolScheduleIfNeeded()
             BellScheduler(this@RadiowezelApp).rescheduleAll()
             UpdateChecker(this@RadiowezelApp).checkForUpdates(manual = false)
         }
@@ -39,6 +42,16 @@ class RadiowezelApp : Application() {
         (PolishHolidays.fixedForYear(year) + PolishHolidays.fixedForYear(year + 1)).forEach {
             database.holidayDao().insert(it)
         }
+    }
+
+    private suspend fun applySchoolScheduleIfNeeded() {
+        val settings = settingsRepository.settings.first()
+        if (settings.scheduleTemplateVersion >= SchoolSchedule.TEMPLATE_VERSION) return
+        val tracks = database.trackDao().getAll()
+        // Apply when tracks exist (wiosna/chopin) or always replace empty/old schedule on this update
+        database.bellEventDao().deleteAll()
+        SchoolSchedule.buildEvents(tracks).forEach { database.bellEventDao().upsert(it) }
+        settingsRepository.setScheduleTemplateVersion(SchoolSchedule.TEMPLATE_VERSION)
     }
 
     private fun ensureChannels() {

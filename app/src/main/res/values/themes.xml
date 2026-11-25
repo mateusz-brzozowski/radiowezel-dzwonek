@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Radiowezel" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#1B3A4B</item>
-        <item name="android:navigationBarColor">#1B3A4B</item>
-        <item name="android:windowBackground">#F2F0EA</item>
+    <style name="Theme.Radiowezel" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#14161C</item>
+        <item name="android:navigationBarColor">#14161C</item>
+        <item name="android:windowBackground">#14161C</item>
+        <item name="android:colorPrimary">#FFB020</item>
     </style>
 </resources>

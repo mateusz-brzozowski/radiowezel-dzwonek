@@ -13,12 +13,29 @@ object BatteryHelper {
         return pm.isIgnoringBatteryOptimizations(context.packageName)
     }
 
-    fun requestIgnoreBatteryOptimizations(context: Context) {
-        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-            data = Uri.parse("package:${context.packageName}")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    /**
+     * Opens the system screen where the user can allow this app to run
+     * WITHOUT battery optimization (unrestricted / ignore optimizations).
+     */
+    fun openUnrestrictedBatterySettings(context: Context) {
+        val pkg = context.packageName
+        val candidates = listOf(
+            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$pkg")
+            },
+            Intent().apply {
+                action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                data = Uri.parse("package:$pkg")
+            }
+        )
+        for (intent in candidates) {
+            try {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                return
+            } catch (_: Exception) {
+            }
         }
-        context.startActivity(intent)
     }
 
     fun openAppDetails(context: Context) {
@@ -29,7 +46,6 @@ object BatteryHelper {
         context.startActivity(intent)
     }
 
-    /** Best-effort Huawei / EMUI protected apps / startup manager intents */
     fun openHuaweiAutostart(context: Context): Boolean {
         val candidates = listOf(
             ComponentName(
@@ -55,7 +71,6 @@ object BatteryHelper {
                 context.startActivity(intent)
                 return true
             } catch (_: Exception) {
-                // try next
             }
         }
         return false

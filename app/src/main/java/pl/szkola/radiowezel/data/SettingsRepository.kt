@@ -25,7 +25,8 @@ data class AppSettings(
     val lastOtaMessage: String = "",
     val pendingForceUpdate: Boolean = false,
     val pendingApkPath: String = "",
-    val pendingChangelog: String = ""
+    val pendingChangelog: String = "",
+    val scheduleTemplateVersion: Int = 0
 )
 
 class SettingsRepository(private val context: Context) {
@@ -37,6 +38,7 @@ class SettingsRepository(private val context: Context) {
     private val pendingForceKey = booleanPreferencesKey("pending_force_update")
     private val pendingApkKey = stringPreferencesKey("pending_apk_path")
     private val pendingChangelogKey = stringPreferencesKey("pending_changelog")
+    private val scheduleTemplateKey = intPreferencesKey("schedule_template_version")
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
         AppSettings(
@@ -47,7 +49,8 @@ class SettingsRepository(private val context: Context) {
             lastOtaMessage = prefs[lastOtaMessageKey].orEmpty(),
             pendingForceUpdate = prefs[pendingForceKey] ?: false,
             pendingApkPath = prefs[pendingApkKey].orEmpty(),
-            pendingChangelog = prefs[pendingChangelogKey].orEmpty()
+            pendingChangelog = prefs[pendingChangelogKey].orEmpty(),
+            scheduleTemplateVersion = prefs[scheduleTemplateKey] ?: 0
         )
     }
 
@@ -75,5 +78,9 @@ class SettingsRepository(private val context: Context) {
             it[pendingApkKey] = apkPath
             it[pendingChangelogKey] = changelog
         }
+    }
+
+    suspend fun setScheduleTemplateVersion(version: Int) {
+        context.dataStore.edit { it[scheduleTemplateKey] = version }
     }
 }
