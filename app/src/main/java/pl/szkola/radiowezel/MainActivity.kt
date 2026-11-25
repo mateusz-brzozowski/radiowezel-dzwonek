@@ -69,12 +69,12 @@ class MainActivity : ComponentActivity() {
 
                 if (state.settings.pendingForceUpdate) {
                     AlertDialog(
-                        onDismissRequest = {},
-                        title = { Text("Wymagana aktualizacja") },
+                        onDismissRequest = { viewModel.dismissForceUpdate() },
+                        title = { Text("Dostępna aktualizacja") },
                         text = {
                             Text(
                                 state.settings.pendingChangelog.ifBlank {
-                                    "Dostępna jest wymuszona aktualizacja aplikacji."
+                                    "Jest nowa wersja aplikacji."
                                 }
                             )
                         },
@@ -84,8 +84,8 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         dismissButton = {
-                            TextButton(onClick = { viewModel.checkUpdates(true) }) {
-                                Text("Sprawdź ponownie")
+                            TextButton(onClick = { viewModel.dismissForceUpdate() }) {
+                                Text("Później")
                             }
                         }
                     )

@@ -29,10 +29,12 @@ class RadiowezelApp : Application() {
         settingsRepository = SettingsRepository(this)
         ensureChannels()
         applicationScope.launch {
+            // Clear stuck force-OTA flag (was causing install/restart loops with Device Owner).
+            settingsRepository.setPendingForceUpdate(false)
             seedHolidaysIfNeeded()
             applySchoolScheduleIfNeeded()
             BellScheduler(this@RadiowezelApp).rescheduleAll()
-            UpdateChecker(this@RadiowezelApp).checkForUpdates(manual = false)
+            // OTA only from UI / daily — not on every cold start while recovering from a bad update.
         }
     }
 

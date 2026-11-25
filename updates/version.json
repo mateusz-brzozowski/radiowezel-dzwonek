@@ -1,7 +1,7 @@
 ﻿{
-  "versionCode": 3,
-  "versionName": "1.1.0",
-  "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.1.0/app-release.apk",
+  "versionCode": 4,
+  "versionName": "1.1.1",
+  "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.1.1/app-release.apk",
   "force": false,
-  "changelog": "Harmonogram 8 lekcji — force OTA wyłączone (naprawa pętli instalacji)"
+  "changelog": "Naprawa pętli OTA/restartów — bez auto-instalacji i force update"
 }

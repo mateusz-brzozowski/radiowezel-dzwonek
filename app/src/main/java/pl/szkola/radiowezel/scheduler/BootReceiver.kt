@@ -6,7 +6,6 @@ import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import pl.szkola.radiowezel.ota.UpdateChecker
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
@@ -19,8 +18,8 @@ class BootReceiver : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Only restore alarms — never trigger OTA here (caused install restart loops).
                 BellScheduler(context).rescheduleAll()
-                UpdateChecker(context).checkForUpdates(manual = false)
             } finally {
                 pending.finish()
             }

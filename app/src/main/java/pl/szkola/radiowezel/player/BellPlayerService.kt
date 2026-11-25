@@ -152,7 +152,7 @@ class BellPlayerService : Service() {
             previousMusicVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
             val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val target = (max * settings.forceVolumePercent / 100f).toInt().coerceIn(1, max)
-            am.setStreamVolume(AudioManager.STREAM_MUSIC, target, AudioManager.FLAG_SHOW_UI)
+            am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
             // Unmute if needed
             if (am.isStreamMute(AudioManager.STREAM_MUSIC)) {
                 am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)

@@ -233,8 +233,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             extras.update { it.copy(otaBusy = true) }
             when (val result = UpdateChecker(getApplication()).checkForUpdates(manual)) {
                 is UpdateResult.Available -> {
-                    extras.update { it.copy(snackbar = "Nowa wersja ${result.info.versionName}") }
-                    UpdateChecker(getApplication()).installApk(result.apkFile)
+                    // Nie instaluj automatycznie — tylko powiadom (instalacja ręczna / force dialog).
+                    extras.update {
+                        it.copy(
+                            snackbar = "Dostępna ${result.info.versionName}. Zainstaluj w Ustawieniach."
+                        )
+                    }
                 }
                 is UpdateResult.UpToDate -> extras.update { it.copy(snackbar = result.message) }
                 is UpdateResult.Error -> extras.update { it.copy(snackbar = result.message) }
@@ -251,6 +255,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             if (path.isNotBlank()) {
                 UpdateChecker(getApplication()).installApk(File(path))
             }
+        }
+    }
+
+    fun dismissForceUpdate() {
+        viewModelScope.launch {
+            settingsRepo.setPendingForceUpdate(false)
         }
     }
 

@@ -4,8 +4,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
-import android.net.Uri
 import android.os.Build
+import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -18,6 +18,7 @@ import pl.szkola.radiowezel.RadiowezelApp
 import pl.szkola.radiowezel.util.KioskHelper
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class UpdateInfo(
     val versionCode: Int,
@@ -70,6 +71,8 @@ class UpdateChecker(private val context: Context) {
             settings.setOtaResult("Dostępna ${info.versionName}")
             if (info.force) {
                 settings.setPendingForceUpdate(true, apk.absolutePath, info.changelog)
+            } else {
+                settings.setPendingForceUpdate(false, apk.absolutePath, info.changelog)
             }
             UpdateResult.Available(info, apk)
         } catch (e: Exception) {
@@ -84,7 +87,9 @@ class UpdateChecker(private val context: Context) {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) error("HTTP ${response.code}")
             val body = response.body?.string() ?: error("Pusta odpowiedź")
-            val json = JSONObject(body)
+            // Strip BOM if present
+            val clean = body.trim().removePrefix("\uFEFF")
+            val json = JSONObject(clean)
             return UpdateInfo(
                 versionCode = json.getInt("versionCode"),
                 versionName = json.optString("versionName", "?"),
@@ -109,13 +114,27 @@ class UpdateChecker(private val context: Context) {
         return out
     }
 
+    /**
+     * Install at most once at a time. Never auto-called in a tight loop from receivers.
+     */
     fun installApk(apkFile: File): Boolean {
         if (!apkFile.exists()) return false
-        return if (KioskHelper.isDeviceOwner(context) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            silentInstall(apkFile)
-        } else {
-            promptInstall(apkFile)
-            true
+        if (!installInFlight.compareAndSet(false, true)) {
+            Log.w(TAG, "Install already in progress — skip")
+            return false
+        }
+        return try {
+            if (KioskHelper.isDeviceOwner(context) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                silentInstall(apkFile)
+            } else {
+                promptInstall(apkFile)
+                true
+            }
+        } finally {
+            // Allow another attempt after a delay (install itself restarts the process)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                installInFlight.set(false)
+            }, 60_000L)
         }
     }
 
@@ -134,7 +153,14 @@ class UpdateChecker(private val context: Context) {
 
     private fun silentInstall(apkFile: File): Boolean {
         return try {
+            // Abandon any leftover sessions that can spam the UI
             val installer = context.packageManager.packageInstaller
+            installer.mySessions.toList().forEach { info ->
+                try {
+                    installer.abandonSession(info.sessionId)
+                } catch (_: Exception) {
+                }
+            }
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
             val sessionId = installer.createSession(params)
             val session = installer.openSession(sessionId)
@@ -152,14 +178,17 @@ class UpdateChecker(private val context: Context) {
             )
             session.commit(callback.intentSender)
             session.close()
+            Log.i(TAG, "Silent install committed session=$sessionId")
             true
-        } catch (_: Exception) {
-            promptInstall(apkFile)
-            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Silent install failed", e)
+            false
         }
     }
 
     companion object {
+        private const val TAG = "UpdateChecker"
         private const val DAY_MS = 24L * 60 * 60 * 1000
+        private val installInFlight = AtomicBoolean(false)
     }
 }
