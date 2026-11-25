@@ -30,10 +30,13 @@ import pl.szkola.radiowezel.R
 import pl.szkola.radiowezel.RadiowezelApp
 import pl.szkola.radiowezel.scheduler.BellScheduler
 import java.io.File
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.PI
 
 /**
- * Plays a local track for a fixed duration.
- * Uses STREAM_MUSIC so sound goes to speaker / jack / aux (radiowęzeł).
+ * Plays a local track for a fixed duration with smooth fade-in / fade-out
+ * (cosine curve — no hard cut).
  */
 class BellPlayerService : Service() {
     private var mediaPlayer: MediaPlayer? = null
@@ -43,15 +46,17 @@ class BellPlayerService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private var playing = false
+    private var playerVolume = 0f
+    private var fadeRunnable: Runnable? = null
 
-    private val stopRunnable = Runnable { stopPlayback(reschedule = true) }
+    private val beginFadeOutRunnable = Runnable { fadeOutThenStop(reschedule = true) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
-                stopPlayback(reschedule = false)
+                fadeOutThenStop(reschedule = false, fadeMs = FAST_FADE_MS)
                 return START_NOT_STICKY
             }
             ACTION_PLAY, null -> {
@@ -66,7 +71,8 @@ class BellPlayerService : Service() {
     }
 
     private fun startPlayback(trackPath: String?, durationSec: Int, title: String) {
-        releasePlayerOnly()
+        cancelFades()
+        releasePlayerOnly(keepPlayingFlag = false)
         playing = true
         acquireWakeLock()
         forceMusicVolume()
@@ -81,6 +87,11 @@ class BellPlayerService : Service() {
             return
         }
 
+        val totalMs = durationSec * 1000L
+        val fadeIn = min(FADE_IN_MS, totalMs / 4)
+        val fadeOut = min(FADE_OUT_MS, totalMs / 3)
+        val holdBeforeFadeOut = (totalMs - fadeOut).coerceAtLeast(0L)
+
         try {
             val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
             mediaPlayer = MediaPlayer().apply {
@@ -94,7 +105,7 @@ class BellPlayerService : Service() {
                 )
                 setDataSource(trackPath)
                 isLooping = true
-                setVolume(1f, 1f)
+                setVolume(0f, 0f)
                 setOnErrorListener { _, what, extra ->
                     Log.e(TAG, "MediaPlayer error what=$what extra=$extra")
                     playToneFallback(durationSec)
@@ -105,12 +116,14 @@ class BellPlayerService : Service() {
                 Log.i(
                     TAG,
                     "MediaPlayer started, musicVol=${am.getStreamVolume(AudioManager.STREAM_MUSIC)}/" +
-                        "${am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)}"
+                        "${am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)}, fadeIn=${fadeIn}ms fadeOut=${fadeOut}ms"
                 )
             }
+            playerVolume = 0f
             startForeground(NOTIFICATION_ID, buildNotification(title))
-            handler.removeCallbacks(stopRunnable)
-            handler.postDelayed(stopRunnable, durationSec * 1000L)
+            fadeTo(1f, fadeIn)
+            handler.removeCallbacks(beginFadeOutRunnable)
+            handler.postDelayed(beginFadeOutRunnable, holdBeforeFadeOut)
         } catch (e: Exception) {
             Log.e(TAG, "Nie udało się odtworzyć pliku", e)
             playToneFallback(durationSec)
@@ -142,6 +155,74 @@ class BellPlayerService : Service() {
         }
     }
 
+    /** Cosine ease — smooth in/out without linear “steps” feel. */
+    private fun easeInOut(t: Float): Float {
+        val x = t.coerceIn(0f, 1f)
+        return (0.5 - 0.5 * cos(PI * x)).toFloat()
+    }
+
+    private fun fadeTo(target: Float, durationMs: Long, onDone: (() -> Unit)? = null) {
+        cancelFadeStepsOnly()
+        val startVol = playerVolume
+        val endVol = target.coerceIn(0f, 1f)
+        if (durationMs <= 0L || mediaPlayer == null) {
+            applyPlayerVolume(endVol)
+            onDone?.invoke()
+            return
+        }
+        val steps = (durationMs / STEP_MS).toInt().coerceAtLeast(1)
+        var step = 0
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!playing || mediaPlayer == null) {
+                    onDone?.invoke()
+                    return
+                }
+                step++
+                val t = step.toFloat() / steps
+                applyPlayerVolume(startVol + (endVol - startVol) * easeInOut(t))
+                if (step < steps) {
+                    handler.postDelayed(this, STEP_MS)
+                } else {
+                    applyPlayerVolume(endVol)
+                    fadeRunnable = null
+                    onDone?.invoke()
+                }
+            }
+        }
+        fadeRunnable = runnable
+        handler.post(runnable)
+    }
+
+    private fun applyPlayerVolume(vol: Float) {
+        playerVolume = vol.coerceIn(0f, 1f)
+        try {
+            mediaPlayer?.setVolume(playerVolume, playerVolume)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun fadeOutThenStop(reschedule: Boolean, fadeMs: Long = FADE_OUT_MS) {
+        handler.removeCallbacks(beginFadeOutRunnable)
+        if (mediaPlayer == null || !playing) {
+            stopPlayback(reschedule)
+            return
+        }
+        fadeTo(0f, fadeMs) {
+            stopPlayback(reschedule)
+        }
+    }
+
+    private fun cancelFadeStepsOnly() {
+        fadeRunnable?.let { handler.removeCallbacks(it) }
+        fadeRunnable = null
+    }
+
+    private fun cancelFades() {
+        handler.removeCallbacks(beginFadeOutRunnable)
+        cancelFadeStepsOnly()
+    }
+
     private fun forceMusicVolume() {
         try {
             val settings = runBlocking {
@@ -153,7 +234,6 @@ class BellPlayerService : Service() {
             val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val target = (max * settings.forceVolumePercent / 100f).toInt().coerceIn(1, max)
             am.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
-            // Unmute if needed
             if (am.isStreamMute(AudioManager.STREAM_MUSIC)) {
                 am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
             }
@@ -222,10 +302,9 @@ class BellPlayerService : Service() {
         wakeLock = null
     }
 
-    /** Stop player without stopping the service (used when restarting a play). */
-    private fun releasePlayerOnly() {
-        handler.removeCallbacks(stopRunnable)
-        playing = false
+    private fun releasePlayerOnly(keepPlayingFlag: Boolean = false) {
+        cancelFades()
+        if (!keepPlayingFlag) playing = false
         try {
             mediaPlayer?.stop()
         } catch (_: Exception) {
@@ -235,6 +314,7 @@ class BellPlayerService : Service() {
         } catch (_: Exception) {
         }
         mediaPlayer = null
+        playerVolume = 0f
     }
 
     private fun stopPlayback(reschedule: Boolean) {
@@ -295,7 +375,7 @@ class BellPlayerService : Service() {
     }
 
     override fun onDestroy() {
-        handler.removeCallbacks(stopRunnable)
+        cancelFades()
         playing = false
         releasePlayerOnly()
         abandonFocus()
@@ -313,6 +393,13 @@ class BellPlayerService : Service() {
         const val EXTRA_TITLE = "title"
         private const val CHANNEL_ID = "bell_playback"
         private const val NOTIFICATION_ID = 1001
+
+        /** Soft rise at the start of the bell */
+        private const val FADE_IN_MS = 2_500L
+        /** Soft fall before end — no hard cut */
+        private const val FADE_OUT_MS = 4_000L
+        private const val FAST_FADE_MS = 800L
+        private const val STEP_MS = 40L
 
         fun play(
             context: Context,
