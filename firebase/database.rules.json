@@ -3,14 +3,29 @@
     "devices": {
       "$deviceId": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null",
+        "command": {
+          ".validate": "newData.hasChildren(['id', 'type', 'issuedAt', 'remoteToken']) && newData.child('id').isString() && newData.child('type').isString() && newData.child('issuedAt').isNumber() && newData.child('remoteToken').isString() && newData.child('remoteToken').val().length >= 16 && !newData.hasChild('base64')"
+        },
+        "ack": {
+          ".validate": "newData.hasChildren(['commandId', 'status', 'at'])"
+        }
+      }
+    },
+    "uploads": {
+      "$deviceId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$uploadId": {
+          ".validate": "newData.hasChildren(['name', 'base64', 'at']) && newData.child('base64').isString() && newData.child('base64').val().length < 1400000"
+        }
       }
     },
     "audit": {
       ".read": "auth != null",
       ".write": "auth != null",
       "$pushId": {
-        ".validate": "newData.hasChildren(['deviceId', 'commandId', 'at'])"
+        ".validate": "newData.hasChildren(['deviceId', 'commandId', 'at', 'type']) && !newData.hasChild('base64') && !newData.hasChild('password') && !newData.hasChild('remoteToken')"
       }
     }
   }

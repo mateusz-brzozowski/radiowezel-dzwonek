@@ -33,8 +33,9 @@ data class AppSettings(
     val scheduleTemplateVersion: Int = 0,
     val assetsBundleVersion: Int = 0,
     val assetsMessage: String = "",
-    val alarmPin: String = "1234",
+    val alarmPin: String = "",
     val deviceId: String = "",
+    val remoteToken: String = "",
     val firebaseEnabled: Boolean = false
 )
 
@@ -53,6 +54,7 @@ class SettingsRepository(private val context: Context) {
     private val assetsMessageKey = stringPreferencesKey("assets_message")
     private val alarmPinKey = stringPreferencesKey("alarm_pin")
     private val deviceIdKey = stringPreferencesKey("device_id")
+    private val remoteTokenKey = stringPreferencesKey("remote_token")
     private val firebaseEnabledKey = booleanPreferencesKey("firebase_enabled")
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -69,8 +71,10 @@ class SettingsRepository(private val context: Context) {
             scheduleTemplateVersion = prefs[scheduleTemplateKey] ?: 0,
             assetsBundleVersion = prefs[assetsBundleKey] ?: 0,
             assetsMessage = prefs[assetsMessageKey].orEmpty(),
-            alarmPin = prefs[alarmPinKey] ?: "1234",
+            // Empty until set in Settings — never ship a known default PIN.
+            alarmPin = prefs[alarmPinKey].orEmpty(),
             deviceId = prefs[deviceIdKey].orEmpty(),
+            remoteToken = prefs[remoteTokenKey].orEmpty(),
             firebaseEnabled = prefs[firebaseEnabledKey] ?: false
         )
     }
@@ -118,7 +122,9 @@ class SettingsRepository(private val context: Context) {
     }
 
     suspend fun setAlarmPin(pin: String) {
-        context.dataStore.edit { it[alarmPinKey] = pin.filter { ch -> ch.isDigit() }.take(6) }
+        val cleaned = pin.filter { ch -> ch.isDigit() }.take(6)
+        require(cleaned.length in 4..6) { "PIN musi mieć 4–6 cyfr" }
+        context.dataStore.edit { it[alarmPinKey] = cleaned }
     }
 
     suspend fun ensureDeviceId(): String {
@@ -129,7 +135,31 @@ class SettingsRepository(private val context: Context) {
         return id
     }
 
+    suspend fun ensureRemoteToken(): String {
+        val current = settings.first().remoteToken
+        if (current.length >= 24) return current
+        val token = generateRemoteToken()
+        context.dataStore.edit { it[remoteTokenKey] = token }
+        return token
+    }
+
+    suspend fun regenerateRemoteToken(): String {
+        val token = generateRemoteToken()
+        context.dataStore.edit { it[remoteTokenKey] = token }
+        return token
+    }
+
     suspend fun setFirebaseEnabled(enabled: Boolean) {
         context.dataStore.edit { it[firebaseEnabledKey] = enabled }
+        if (enabled) {
+            ensureDeviceId()
+            ensureRemoteToken()
+        }
+    }
+
+    private fun generateRemoteToken(): String {
+        val bytes = ByteArray(24)
+        java.security.SecureRandom().nextBytes(bytes)
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

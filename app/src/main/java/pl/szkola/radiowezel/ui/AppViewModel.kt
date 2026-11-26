@@ -228,24 +228,39 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setAlarmPin(pin: String) {
         viewModelScope.launch {
-            settingsRepo.setAlarmPin(pin)
-            extras.update { it.copy(snackbar = "Zapisano PIN alarmowy") }
+            try {
+                settingsRepo.setAlarmPin(pin)
+                extras.update { it.copy(snackbar = "Zapisano PIN alarmowy") }
+            } catch (e: Exception) {
+                extras.update { it.copy(snackbar = e.message ?: "Nie udało się zapisać PIN") }
+            }
         }
     }
 
     fun setFirebaseEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsRepo.setFirebaseEnabled(enabled)
+            if (enabled) {
+                settingsRepo.ensureDeviceId()
+                settingsRepo.ensureRemoteToken()
+            }
             app.startRemoteIfEnabled()
             extras.update {
                 it.copy(
                     snackbar = if (enabled) {
-                        "Zdalne sterowanie włączone (wymaga firebase_config.json)"
+                        "Zdalne sterowanie włączone — skopiuj Device ID i kod parowania"
                     } else {
                         "Zdalne sterowanie wyłączone"
                     }
                 )
             }
+        }
+    }
+
+    fun regenerateRemoteToken() {
+        viewModelScope.launch {
+            settingsRepo.regenerateRemoteToken()
+            extras.update { it.copy(snackbar = "Wygenerowano nowy kod parowania — zaktualizuj panel WWW") }
         }
     }
 
@@ -270,10 +285,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         var ok = false
         kotlinx.coroutines.runBlocking {
             val settings = settingsRepo.settings.first()
-            ok = pin == settings.alarmPin
+            ok = settings.alarmPin.length in 4..6 && pin == settings.alarmPin
             if (ok) {
                 AlarmPlayerService.start(getApplication(), type, drill)
                 extras.update { it.copy(snackbar = "Uruchomiono: ${type.label}") }
+            } else if (settings.alarmPin.isBlank()) {
+                extras.update { it.copy(snackbar = "Najpierw ustaw PIN alarmowy w Ustawieniach") }
             }
         }
         return ok && expected

@@ -60,6 +60,7 @@ class CommandListener(private val app: RadiowezelApp) {
                     auth.signInWithEmailAndPassword(cfg.deviceEmail, cfg.devicePassword).await()
                 }
                 val deviceId = app.settingsRepository.ensureDeviceId()
+                app.settingsRepository.ensureRemoteToken()
                 val db = FirebaseDatabase.getInstance(cfg.databaseURL)
                 val deviceRef = db.getReference("devices").child(deviceId)
                 publishPresence(deviceId)
@@ -181,6 +182,13 @@ class CommandListener(private val app: RadiowezelApp) {
         val ackRef = FirebaseDatabase.getInstance(databaseURL)
             .getReference("devices").child(deviceId).child("ack")
         try {
+            val expectedToken = app.settingsRepository.settings.first().remoteToken
+            val providedToken = snapshot.child("remoteToken").getValue(String::class.java).orEmpty()
+            if (expectedToken.length < 24 || providedToken != expectedToken) {
+                ackOk(ackRef, commandId, "rejected_auth")
+                Log.w(TAG, "Rejected command $commandId — invalid remoteToken")
+                return
+            }
             when (type.lowercase()) {
                 "stop" -> {
                     AlarmPlayerService.stop(app)
@@ -291,15 +299,29 @@ class CommandListener(private val app: RadiowezelApp) {
                 "import_track" -> {
                     val name = snapshot.child("name").getValue(String::class.java) ?: "utwor.mp3"
                     val url = snapshot.child("url").getValue(String::class.java)
-                    val b64 = snapshot.child("base64").getValue(String::class.java)
-                    val file = when {
-                        !b64.isNullOrBlank() -> TrackStorage.importFromBase64(app, b64, name)
-                        !url.isNullOrBlank() -> TrackStorage.importFromUrl(app, url, name)
-                        else -> error("url or base64 required")
-                    }
+                        ?: error("url required (pliki uploaduj przez uploads/)")
+                    val file = TrackStorage.importFromUrl(app, url, name)
                     app.database.trackDao().insert(
                         TrackEntity(name = name, filePath = file.absolutePath)
                     )
+                    publishState(deviceId)
+                    ackOk(ackRef, commandId, "track_imported")
+                }
+                "import_track_upload" -> {
+                    val uploadId = snapshot.child("uploadId").getValue(String::class.java)
+                        ?: error("uploadId required")
+                    val uploadRef = FirebaseDatabase.getInstance(databaseURL)
+                        .getReference("uploads").child(deviceId).child(uploadId)
+                    val uploadSnap = uploadRef.get().await()
+                    if (!uploadSnap.exists()) error("upload not found")
+                    val name = uploadSnap.child("name").getValue(String::class.java) ?: "utwor.mp3"
+                    val b64 = uploadSnap.child("base64").getValue(String::class.java)
+                        ?: error("missing base64")
+                    val file = TrackStorage.importFromBase64(app, b64, name)
+                    app.database.trackDao().insert(
+                        TrackEntity(name = name, filePath = file.absolutePath)
+                    )
+                    uploadRef.removeValue().await()
                     publishState(deviceId)
                     ackOk(ackRef, commandId, "track_imported")
                 }

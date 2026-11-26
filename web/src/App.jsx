@@ -1,11 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import { onValue, push, ref, set } from "firebase/database";
-import { auth, db, isFirebaseConfigured } from "./firebase.js";
+import {
+  auth,
+  clearInsecureBrowserSecrets,
+  db,
+  hardenAuthSession,
+  isFirebaseConfigured,
+} from "./firebase.js";
+
+const IDLE_MS = 12 * 60 * 1000;
 
 const ALARMS = [
   { id: "test", label: "Test systemu" },
@@ -56,13 +64,12 @@ function fileToBase64(file) {
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [email, setEmail] = useState("test@psppotoczek.pl");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [deviceId, setDeviceId] = useState(
-    import.meta.env.VITE_DEFAULT_DEVICE_ID || localStorage.getItem("deviceId") || ""
-  );
+  const [deviceId, setDeviceId] = useState("");
+  const [remoteToken, setRemoteToken] = useState("");
   const [pin, setPin] = useState("");
-  const [alarmPin, setAlarmPin] = useState(localStorage.getItem("alarmPin") || "1234");
+  const [alarmPin, setAlarmPin] = useState("");
   const [drill, setDrill] = useState(true);
   const [presence, setPresence] = useState(null);
   const [state, setState] = useState(null);
@@ -71,6 +78,7 @@ export default function App() {
   const [info, setInfo] = useState("");
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState("status");
+  const idleTimer = useRef(null);
 
   const [eventTime, setEventTime] = useState("08:15");
   const [eventType, setEventType] = useState("BREAK_START");
@@ -86,17 +94,29 @@ export default function App() {
   const [trackFile, setTrackFile] = useState(null);
 
   useEffect(() => {
+    clearInsecureBrowserSecrets();
+    hardenAuthSession().catch(() => {});
     if (!auth) return undefined;
     return onAuthStateChanged(auth, setUser);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("deviceId", deviceId.trim());
-  }, [deviceId]);
-
-  useEffect(() => {
-    localStorage.setItem("alarmPin", alarmPin);
-  }, [alarmPin]);
+    if (!user) return undefined;
+    const bump = () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      idleTimer.current = setTimeout(() => {
+        signOut(auth).catch(() => {});
+        setInfo("Wylogowano po bezczynności (12 min).");
+      }, IDLE_MS);
+    };
+    const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    events.forEach((ev) => window.addEventListener(ev, bump, { passive: true }));
+    bump();
+    return () => {
+      events.forEach((ev) => window.removeEventListener(ev, bump));
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!db || !user || !deviceId.trim()) {
@@ -135,19 +155,27 @@ export default function App() {
     }
     setBusy(true);
     try {
+      await hardenAuthSession();
       await signInWithEmailAndPassword(auth, email.trim(), password);
+      setPassword("");
+      setEmail("");
     } catch (err) {
-      setError(err.message || "Logowanie nieudane");
+      setPassword("");
+      setError("Logowanie nieudane. Sprawdź e-mail i hasło.");
     } finally {
       setBusy(false);
     }
   }
 
   async function logout() {
+    setRemoteToken("");
+    setAlarmPin("");
+    setPin("");
+    setDeviceId("");
     if (auth) await signOut(auth);
   }
 
-  async function sendCommand(payload, { requirePin = false } = {}) {
+  async function sendCommand(payload, { requirePin = true } = {}) {
     setError("");
     setInfo("");
     if (!db || !user) {
@@ -158,27 +186,35 @@ export default function App() {
       setError("Uzupełnij Device ID");
       return;
     }
-    if (requirePin && pin !== alarmPin) {
-      setError("Błędny PIN alarmowy");
+    if (remoteToken.trim().length < 16) {
+      setError("Wklej kod parowania z tabletu (Ustawienia)");
       return;
+    }
+    if (requirePin) {
+      if (alarmPin.length < 4 || pin !== alarmPin) {
+        setError("Podaj poprawny PIN alarmowy (potwierdzenie akcji)");
+        return;
+      }
     }
     const commandId = uid();
     const body = {
       id: commandId,
       issuedAt: Date.now(),
       issuedBy: user.email || "unknown",
+      remoteToken: remoteToken.trim(),
       ...payload,
     };
     setBusy(true);
     try {
       await set(ref(db, `devices/${deviceId.trim()}/command`), body);
+      const { remoteToken: _t, base64: _b, url: _u, ...auditSafe } = body;
       await push(ref(db, "audit"), {
-        ...body,
+        ...auditSafe,
         deviceId: deviceId.trim(),
         at: Date.now(),
         source: "web",
       });
-      setInfo(`Wysłano: ${payload.type} (${commandId})`);
+      setInfo(`Wysłano: ${payload.type}`);
       if (requirePin) setPin("");
     } catch (err) {
       setError(err.message || "Nie udało się wysłać komendy");
@@ -239,12 +275,24 @@ export default function App() {
         setError("Plik za duży (max ~900 KB przez panel). Użyj mniejszego MP3 albo URL.");
         return;
       }
+      if (!deviceId.trim() || remoteToken.trim().length < 16) {
+        setError("Device ID i kod parowania są wymagane");
+        return;
+      }
       setBusy(true);
       try {
         const base64 = await fileToBase64(trackFile);
-        await sendCommand({ type: "import_track", name, base64 });
+        const uploadId = uid();
+        await set(ref(db, `uploads/${deviceId.trim()}/${uploadId}`), {
+          name,
+          base64,
+          at: Date.now(),
+        });
+        await sendCommand({ type: "import_track_upload", uploadId, name });
         setTrackFile(null);
         setTrackName("");
+      } catch (err) {
+        setError(err.message || "Upload nieudany");
       } finally {
         setBusy(false);
       }
@@ -273,22 +321,26 @@ export default function App() {
       <div className="app">
         <h1 className="brand">Radiowęzeł</h1>
         <p className="lead">Panel zdalny: dzwonki, utwory, święta i alarmy.</p>
-        <form className="panel" onSubmit={login}>
+        <form className="panel" onSubmit={login} autoComplete="off">
           <div className="label">Logowanie</div>
           <input
             className="field"
             type="email"
+            name="panel-email"
             placeholder="E-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
             required
           />
           <input
             className="field"
             type="password"
+            name="panel-password"
             placeholder="Hasło"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
             required
           />
           <button className="btn" disabled={busy} type="submit">
@@ -320,27 +372,51 @@ export default function App() {
           className="field"
           placeholder="Device ID (z Ustawień tabletu)"
           value={deviceId}
-          onChange={(e) => setDeviceId(e.target.value)}
+          onChange={(e) => setDeviceId(e.target.value.trim())}
+          autoComplete="off"
         />
         <input
           className="field"
           type="password"
-          placeholder="Zapamiętany PIN alarmowy"
+          placeholder="Kod parowania (z Ustawień tabletu)"
+          value={remoteToken}
+          onChange={(e) => setRemoteToken(e.target.value.trim())}
+          autoComplete="off"
+        />
+        <input
+          className="field"
+          type="password"
+          inputMode="numeric"
+          placeholder="PIN alarmowy tabletu (sesja — nie zapisywany)"
           value={alarmPin}
           onChange={(e) => setAlarmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          autoComplete="off"
+        />
+        <input
+          className="field"
+          type="password"
+          inputMode="numeric"
+          placeholder="Potwierdzenie PIN (przy każdej zmianie)"
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          autoComplete="off"
         />
         <div className="row">
           <button className="btn ghost" type="button" onClick={logout}>
-            Wyloguj ({user.email})
+            Wyloguj
           </button>
           <button
             className="btn ghost"
             type="button"
             disabled={busy}
-            onClick={() => sendCommand({ type: "refresh_state" })}
+            onClick={() => sendCommand({ type: "refresh_state" }, { requirePin: false })}
           >
             Odśwież stan
           </button>
+        </div>
+        <div className="muted" style={{ marginTop: 8 }}>
+          Sesja tylko w tej karcie przeglądarki. Bezczynność 12 min = wylogowanie. PIN i kod
+          parowania nie są zapamiętywane na dysku.
         </div>
       </div>
 
@@ -589,20 +665,15 @@ export default function App() {
               {drill ? "Tryb: ĆWICZENIE" : "Tryb: PRAWDZIWY ALARM"}
             </label>
           </div>
-          <input
-            className="field"
-            type="password"
-            inputMode="numeric"
-            placeholder="PIN alarmowy (potwierdzenie)"
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          />
+          <div className="muted" style={{ marginBottom: 10 }}>
+            Użyj pól PIN z sekcji Tablet powyżej.
+          </div>
           <div className="row" style={{ marginBottom: 12 }}>
             <button
               className="btn danger"
               type="button"
               disabled={busy}
-              onClick={() => sendCommand({ type: "stop" }, { requirePin: true })}
+              onClick={() => sendCommand({ type: "stop" })}
             >
               STOP
             </button>
@@ -614,12 +685,7 @@ export default function App() {
                 className="btn alarm"
                 type="button"
                 disabled={busy}
-                onClick={() =>
-                  sendCommand(
-                    { type: "start", alarmType: a.id, drill },
-                    { requirePin: true }
-                  )
-                }
+                onClick={() => sendCommand({ type: "start", alarmType: a.id, drill })}
               >
                 {a.label}
               </button>

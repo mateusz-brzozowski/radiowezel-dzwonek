@@ -613,7 +613,11 @@ fun SettingsScreen(state: UiState, viewModel: AppViewModel) {
                     state.assetsProgressLabel.ifBlank { "Brak informacji o paczce" },
                     color = if (state.assetsComplete) Signal else Warn
                 )
-                Text("Device ID: ${state.settings.deviceId.ifBlank { "(nadawany przy starcie)" }}", color = InkDim)
+                Text("Device ID: ${state.settings.deviceId.ifBlank { "(nadawany przy włączeniu)" }}", color = InkDim)
+                Text(
+                    "Kod parowania: ${state.settings.remoteToken.ifBlank { "(brak — włącz Firebase)" }}",
+                    color = InkDim
+                )
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = { viewModel.syncAlarmAssets() },
@@ -627,7 +631,7 @@ fun SettingsScreen(state: UiState, viewModel: AppViewModel) {
                 OutlinedTextField(
                     value = pinEdit,
                     onValueChange = { pinEdit = it.filter { c -> c.isDigit() }.take(6) },
-                    label = { Text("PIN alarmowy") },
+                    label = { Text("PIN alarmowy (4–6 cyfr, bez domyślnego)") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -645,8 +649,14 @@ fun SettingsScreen(state: UiState, viewModel: AppViewModel) {
                         onCheckedChange = { viewModel.setFirebaseEnabled(it) }
                     )
                 }
+                OutlinedButton(
+                    onClick = { viewModel.regenerateRemoteToken() },
+                    enabled = state.settings.firebaseEnabled,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp)
+                ) { Text("Wygeneruj nowy kod parowania") }
                 Text(
-                    "Skopiuj Device ID do panelu WWW. Wymaga wypełnionego assets/firebase_config.json.",
+                    "Do panelu WWW skopiuj Device ID + kod parowania. Nie udostępniaj ich publicznie.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = InkDim
                 )

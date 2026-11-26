@@ -1,8 +1,8 @@
 ﻿{
-  "versionCode": 6,
-  "versionName": "1.2.1",
-  "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.2.1/app-release.apk",
+  "versionCode": 7,
+  "versionName": "1.2.2",
+  "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.2.2/app-release.apk",
   "force": false,
   "assetsUrl": "https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/assets.json",
-  "changelog": "Zdalny panel: pełna obsługa planu, utworów, świąt i alarmów"
+  "changelog": "Bezpieczeństwo panelu: sesja, kod parowania, PIN, bez prefill loginu"
 }

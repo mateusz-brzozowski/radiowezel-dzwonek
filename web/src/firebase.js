@@ -1,5 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import {
+  browserSessionPersistence,
+  getAuth,
+  setPersistence,
+} from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
@@ -21,3 +25,20 @@ export const isFirebaseConfigured = Boolean(
 export const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
 export const auth = app ? getAuth(app) : null;
 export const db = app ? getDatabase(app) : null;
+
+/** Session-only auth: closing the tab/browser ends the session. */
+export async function hardenAuthSession() {
+  if (!auth) return;
+  await setPersistence(auth, browserSessionPersistence);
+}
+
+/** Wipe any insecure leftovers from earlier panel builds. */
+export function clearInsecureBrowserSecrets() {
+  try {
+    localStorage.removeItem("alarmPin");
+    localStorage.removeItem("deviceId");
+    localStorage.removeItem("remoteToken");
+  } catch (_) {
+    /* ignore */
+  }
+}
