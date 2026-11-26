@@ -61,7 +61,7 @@ class BellPlayerService : Service() {
             }
             ACTION_PLAY, null -> {
                 val trackPath = intent?.getStringExtra(EXTRA_TRACK_PATH)
-                val durationSec = (intent?.getIntExtra(EXTRA_DURATION_SEC, 30) ?: 30).coerceIn(1, 600)
+                val durationSec = (intent?.getIntExtra(EXTRA_DURATION_SEC, 60) ?: 60).coerceIn(1, 600)
                 val title = intent?.getStringExtra(EXTRA_TITLE) ?: getString(R.string.playing_bell)
                 startForeground(NOTIFICATION_ID, buildNotification(title))
                 startPlayback(trackPath, durationSec, title)

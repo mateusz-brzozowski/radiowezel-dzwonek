@@ -13,8 +13,8 @@ import pl.szkola.radiowezel.data.db.TrackEntity
  * chopin = koniec przerwy (start lekcji)
  */
 object SchoolSchedule {
-    const val TEMPLATE_VERSION = 1
-    const val DURATION_SECONDS = 30
+    const val TEMPLATE_VERSION = 2
+    const val DURATION_SECONDS = 60
 
     /** Koniec lekcji → rozpoczęcie przerwy */
     private val breakStarts = listOf(

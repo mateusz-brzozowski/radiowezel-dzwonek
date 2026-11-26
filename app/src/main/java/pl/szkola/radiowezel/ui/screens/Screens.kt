@@ -321,7 +321,7 @@ private fun EventEditorDialog(
     var showTimePicker by remember { mutableStateOf(false) }
     var type by remember { mutableStateOf(initial?.type ?: BellType.BREAK_START) }
     var trackId by remember { mutableStateOf(initial?.trackId ?: tracks.firstOrNull()?.id) }
-    var duration by remember { mutableIntStateOf(initial?.durationSeconds ?: 30) }
+    var duration by remember { mutableIntStateOf(initial?.durationSeconds ?: 60) }
     var typeExpanded by remember { mutableStateOf(false) }
     var trackExpanded by remember { mutableStateOf(false) }
 
@@ -630,7 +630,7 @@ fun SettingsScreen(state: UiState, viewModel: AppViewModel) {
                 Text("HARMONOGRAM", style = MaterialTheme.typography.labelSmall, color = InkDim)
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Wczytuje plan 8 lekcji: wiosna = start przerwy, chopin = koniec przerwy (30 s).",
+                    "Wczytuje plan 8 lekcji: wiosna = start przerwy, chopin = koniec przerwy (60 s).",
                     style = MaterialTheme.typography.bodyMedium,
                     color = InkDim
                 )
