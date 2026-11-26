@@ -36,15 +36,32 @@ Manifest assetów: https://raw.githubusercontent.com/mateusz-brzozowski/radiowez
 .\scripts\publish-assets.ps1          # release assets-v1
 ```
 
-## Pierwszy setup na tablecie
+## Checklist: tablet + strona (do dokończenia)
+
+### Na tablecie
+1. Zainstaluj **APK 1.2.2+** (OTA: Ustawienia → Sprawdź aktualizację, albo z GitHub Releases).
+2. Ustawienia → **Pobierz paczkę alarmów** (musi być kompletna).
+3. Ustawienia → ustaw **własny PIN** (4–6 cyfr) → Zapisz.
+4. Ustawienia → włącz **Zdalne sterowanie (Firebase)**.
+5. Skopiuj **Device ID** i **kod parowania** (pokazane w Ustawieniach).
+6. (Opcja) Utwory + „Wczytaj plan lekcji szkoły”, test „Dzwoń teraz”.
+
+### Na stronie https://radiowezel-dzwonek.web.app
+1. Zaloguj się kontem szkoły (e-mail/hasło — nie są w publicznym README).
+2. Wklej **Device ID** + **kod parowania** + PIN z tabletu.
+3. „Odśwież stan” → zarządzaj Planem / Utworami / Świętami / Alarmami.
+
+Panel: sesja tylko w karcie przeglądarki; 12 min bezczynności = wylogowanie.
+
+## Pierwszy setup na tablecie (niezawodność)
 
 1. Zainstaluj APK i otwórz aplikację.
 2. **Wyłącz optymalizację baterii** (Status / Ustawienia).
 3. Na Huawei: autostart + chronione aplikacje.
 4. Upewnij się, że **automatyczna data i czas** są włączone.
 5. Zaimportuj utwory MP3 (Utwory) → **Wczytaj plan lekcji szkoły**.
-6. **Ustawienia → Pobierz / odśwież paczkę alarmów** (postęp „Paczka alarmów n/14”).
-7. Zakładka **Alarmy**: ustaw tryb Ćwiczenie, PIN (domyślnie `1234`), test na niskiej głośności, STOP.
+6. **Ustawienia → Pobierz / odśwież paczkę alarmów**.
+7. Ustaw **PIN** i przetestuj Alarmy (ćwiczenie) + STOP.
 
 ### Test regresji alarm vs dzwonek
 
@@ -65,14 +82,10 @@ Generowanie lokalne: `scripts/generate_alarm_tones.py`, `scripts/generate_alarm_
 
 ## Zdalne sterowanie (Firebase)
 
-1. Utwórz projekt Firebase: **Authentication** (e-mail/hasło) + **Realtime Database**.
-2. Wgraj reguły z `firebase/database.rules.json`.
-3. Utwórz konta: dyrektor (panel) + konto urządzenia (tablet).
-4. Wypełnij `app/src/main/assets/firebase_config.json` (apiKey, appId, databaseURL, deviceEmail/Password).
-5. W aplikacji: Ustawienia → skopiuj **Device ID** → włącz **Zdalne sterowanie**.
-6. Panel: `web/` — skopiuj `.env.example` → `.env`, `npm install && npm run build`, hostuj (`firebase deploy --only hosting` z katalogu `firebase/` albo dowolny HTTPS).
+Projekt produkcyjny: **radiowezel-dzwonek** · Hosting: https://radiowezel-dzwonek.web.app  
 
-Ścieżki RTDB: `devices/{deviceId}/presence|command|ack`, audyt w `audit/`.
+Na tablecie (APK z wgranym `firebase_config.json`): Device ID + **kod parowania** + PIN.  
+Reguły: `firebase/database.rules.json`. Stan: `devices/{id}/state`, komendy: `…/command` (wymagają `remoteToken`).
 
 ## Device Owner (ADB)
 
