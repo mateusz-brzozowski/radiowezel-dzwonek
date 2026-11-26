@@ -13,6 +13,9 @@ interface BellEventDao {
     @Query("SELECT * FROM bell_events ORDER BY timeMinutes ASC, id ASC")
     fun observeAll(): Flow<List<BellEventEntity>>
 
+    @Query("SELECT * FROM bell_events ORDER BY timeMinutes ASC, id ASC")
+    suspend fun getAll(): List<BellEventEntity>
+
     @Query("SELECT * FROM bell_events WHERE enabled = 1 ORDER BY timeMinutes ASC")
     suspend fun getEnabled(): List<BellEventEntity>
 
@@ -57,6 +60,12 @@ interface TrackDao {
 interface HolidayDao {
     @Query("SELECT * FROM holidays ORDER BY date ASC")
     fun observeAll(): Flow<List<HolidayEntity>>
+
+    @Query("SELECT * FROM holidays ORDER BY date ASC")
+    suspend fun getAll(): List<HolidayEntity>
+
+    @Query("SELECT * FROM holidays WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): HolidayEntity?
 
     @Query("SELECT * FROM holidays WHERE date = :date LIMIT 1")
     suspend fun getByDate(date: String): HolidayEntity?

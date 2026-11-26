@@ -16,4 +16,8 @@ updates/*.apk
 web/node_modules/
 web/dist/
 web/.env
+app/src/main/assets/firebase_config.json
 app/src/main/assets/firebase_config.local.json
+firebase/credentials.local.json
+web/dist/
+.firebase/

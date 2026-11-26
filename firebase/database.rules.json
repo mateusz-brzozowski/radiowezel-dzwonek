@@ -3,16 +3,7 @@
     "devices": {
       "$deviceId": {
         ".read": "auth != null",
-        ".write": "auth != null",
-        "presence": {
-          ".write": "auth != null"
-        },
-        "command": {
-          ".write": "auth != null"
-        },
-        "ack": {
-          ".write": "auth != null"
-        }
+        ".write": "auth != null"
       }
     },
     "audit": {

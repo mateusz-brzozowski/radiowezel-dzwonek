@@ -1,0 +1,10 @@
+{
+  "apiKey": "REPLACE_ME",
+  "appId": "1:REPLACE:android:REPLACE",
+  "projectId": "radiowezel-dzwonek",
+  "databaseURL": "https://radiowezel-dzwonek-default-rtdb.europe-west1.firebasedatabase.app",
+  "messagingSenderId": "17637825982",
+  "storageBucket": "radiowezel-dzwonek.firebasestorage.app",
+  "deviceEmail": "vistergames+tablet@gmail.com",
+  "devicePassword": "REPLACE_DEVICE_PASSWORD"
+}
