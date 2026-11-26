@@ -607,6 +607,52 @@ fun SettingsScreen(state: UiState, viewModel: AppViewModel) {
             }
 
             Panel {
+                Text("PACZKA ALARMÓW", style = MaterialTheme.typography.labelSmall, color = InkDim)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    state.assetsProgressLabel.ifBlank { "Brak informacji o paczce" },
+                    color = if (state.assetsComplete) Signal else Warn
+                )
+                Text("Device ID: ${state.settings.deviceId.ifBlank { "(nadawany przy starcie)" }}", color = InkDim)
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = { viewModel.syncAlarmAssets() },
+                    enabled = !state.assetSyncBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Color(0xFF1A1200))
+                ) { Text(if (state.assetSyncBusy) "Pobieranie…" else "Pobierz / odśwież paczkę alarmów") }
+                var pinEdit by remember(state.settings.alarmPin) { mutableStateOf(state.settings.alarmPin) }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = pinEdit,
+                    onValueChange = { pinEdit = it.filter { c -> c.isDigit() }.take(6) },
+                    label = { Text("PIN alarmowy") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedButton(
+                    onClick = { viewModel.setAlarmPin(pinEdit) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(4.dp)
+                ) { Text("Zapisz PIN") }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Zdalne sterowanie (Firebase)")
+                    Spacer(Modifier.weight(1f))
+                    Switch(
+                        checked = state.settings.firebaseEnabled,
+                        onCheckedChange = { viewModel.setFirebaseEnabled(it) }
+                    )
+                }
+                Text(
+                    "Skopiuj Device ID do panelu WWW. Wymaga wypełnionego assets/firebase_config.json.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = InkDim
+                )
+            }
+
+            Panel {
                 Text("GŁOŚNOŚĆ (MUSIC / AUX)", style = MaterialTheme.typography.labelSmall, color = InkDim)
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -20,6 +20,10 @@ class BellAlarmReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val app = context.applicationContext as RadiowezelApp
+                if (pl.szkola.radiowezel.alarm.AlarmState.isActive) {
+                    BellScheduler(context).rescheduleAll()
+                    return@launch
+                }
                 val today = LocalDate.now()
                 if (!TimeUtils.isSchoolDay(today) ||
                     app.database.holidayDao().isHoliday(TimeUtils.formatDate(today))

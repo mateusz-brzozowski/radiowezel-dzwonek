@@ -13,3 +13,7 @@
 *.aab
 *.keystore
 updates/*.apk
+web/node_modules/
+web/dist/
+web/.env
+app/src/main/assets/firebase_config.local.json

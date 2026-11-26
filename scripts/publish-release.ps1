@@ -32,12 +32,14 @@ $tag = "v$VersionName"
 $forceJson = if ($Force) { "true" } else { "false" }
 $apkUrl = "https://github.com/$Repo/releases/download/$tag/app-release.apk"
 
+$assetsUrl = "https://raw.githubusercontent.com/$Repo/master/updates/assets.json"
 $versionJson = @"
 {
   "versionCode": $VersionCode,
   "versionName": "$VersionName",
   "apkUrl": "$apkUrl",
   "force": $forceJson,
+  "assetsUrl": "$assetsUrl",
   "changelog": "$Changelog"
 }
 "@

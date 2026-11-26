@@ -1,7 +1,8 @@
 ﻿{
-  "versionCode": 4,
-  "versionName": "1.1.1",
-  "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.1.1/app-release.apk",
+  "versionCode": 5,
+  "versionName": "1.2.0",
+  "apkUrl": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/v1.2.0/app-release.apk",
   "force": false,
-  "changelog": "Naprawa pętli OTA/restartów — bez auto-instalacji i force update"
+  "assetsUrl": "https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/assets.json",
+  "changelog": "Alarmy szkolne (paczka OTA), zakładka Alarmy + PIN, AssetSync, zdalne sterowanie Firebase + panel WWW"
 }

@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "devices": {
+      "$deviceId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "presence": {
+          ".write": "auth != null"
+        },
+        "command": {
+          ".write": "auth != null"
+        },
+        "ack": {
+          ".write": "auth != null"
+        }
+      }
+    },
+    "audit": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$pushId": {
+        ".validate": "newData.hasChildren(['deviceId', 'commandId', 'at'])"
+      }
+    }
+  }
+}

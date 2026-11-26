@@ -1,0 +1,10 @@
+{
+  "apiKey": "REPLACE_ME",
+  "appId": "1:REPLACE:android:REPLACE",
+  "projectId": "radiowezel-szkola",
+  "databaseURL": "https://radiowezel-szkola-default-rtdb.europe-west1.firebasedatabase.app",
+  "messagingSenderId": "0",
+  "storageBucket": "radiowezel-szkola.appspot.com",
+  "deviceEmail": "tablet@radiowezel.local",
+  "devicePassword": "REPLACE_DEVICE_PASSWORD"
+}

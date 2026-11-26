@@ -13,14 +13,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.szkola.radiowezel.RadiowezelApp
+import pl.szkola.radiowezel.alarm.AlarmState
+import pl.szkola.radiowezel.alarm.AlarmType
 import pl.szkola.radiowezel.data.AppSettings
 import pl.szkola.radiowezel.data.SchoolSchedule
 import pl.szkola.radiowezel.data.db.BellEventEntity
 import pl.szkola.radiowezel.data.db.BellType
 import pl.szkola.radiowezel.data.db.HolidayEntity
 import pl.szkola.radiowezel.data.db.TrackEntity
+import pl.szkola.radiowezel.ota.AssetSync
 import pl.szkola.radiowezel.ota.UpdateChecker
 import pl.szkola.radiowezel.ota.UpdateResult
+import pl.szkola.radiowezel.player.AlarmPlayerService
 import pl.szkola.radiowezel.player.BellPlayerService
 import pl.szkola.radiowezel.scheduler.BellScheduler
 import pl.szkola.radiowezel.util.BatteryHelper
@@ -38,13 +42,18 @@ data class UiState(
     val autoTimeEnabled: Boolean = true,
     val isDeviceOwner: Boolean = false,
     val otaBusy: Boolean = false,
-    val snackbar: String? = null
+    val snackbar: String? = null,
+    val assetsComplete: Boolean = false,
+    val assetsProgressLabel: String = "",
+    val activeAlarmLabel: String? = null,
+    val assetSyncBusy: Boolean = false
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as RadiowezelApp
     private val db = app.database
     private val settingsRepo = app.settingsRepository
+    private val assetSync = AssetSync(application)
 
     private val extras = MutableStateFlow(
         Extras(
@@ -53,7 +62,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             autoTimeEnabled = BatteryHelper.isAutoTimeEnabled(application),
             isDeviceOwner = KioskHelper.isDeviceOwner(application),
             otaBusy = false,
-            snackbar = null
+            snackbar = null,
+            assetSyncBusy = false
         )
     )
 
@@ -62,8 +72,18 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         db.trackDao().observeAll(),
         db.holidayDao().observeAll(),
         settingsRepo.settings,
-        extras
-    ) { events, tracks, holidays, settings, ex ->
+        extras,
+        assetSync.progress,
+        AlarmState.active
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val events = values[0] as List<BellEventEntity>
+        val tracks = values[1] as List<TrackEntity>
+        val holidays = values[2] as List<HolidayEntity>
+        val settings = values[3] as AppSettings
+        val ex = values[4] as Extras
+        val assets = values[5] as pl.szkola.radiowezel.ota.AssetSyncProgress
+        val active = values[6] as AlarmType?
         UiState(
             events = events,
             tracks = tracks,
@@ -74,12 +94,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             autoTimeEnabled = ex.autoTimeEnabled,
             isDeviceOwner = ex.isDeviceOwner,
             otaBusy = ex.otaBusy,
-            snackbar = ex.snackbar
+            snackbar = ex.snackbar,
+            assetsComplete = assets.complete,
+            assetsProgressLabel = assets.message.ifBlank { settings.assetsMessage },
+            activeAlarmLabel = active?.label,
+            assetSyncBusy = ex.assetSyncBusy
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState())
 
     init {
         refreshStatus()
+        viewModelScope.launch { assetSync.refreshStatus() }
     }
 
     fun refreshStatus() {
@@ -93,6 +118,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     isDeviceOwner = KioskHelper.isDeviceOwner(getApplication())
                 )
             }
+            assetSync.refreshStatus()
         }
     }
 
@@ -200,8 +226,70 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { settingsRepo.setForceVolume(percent, enabled) }
     }
 
+    fun setAlarmPin(pin: String) {
+        viewModelScope.launch {
+            settingsRepo.setAlarmPin(pin)
+            extras.update { it.copy(snackbar = "Zapisano PIN alarmowy") }
+        }
+    }
+
+    fun setFirebaseEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepo.setFirebaseEnabled(enabled)
+            app.startRemoteIfEnabled()
+            extras.update {
+                it.copy(
+                    snackbar = if (enabled) {
+                        "Zdalne sterowanie włączone (wymaga firebase_config.json)"
+                    } else {
+                        "Zdalne sterowanie wyłączone"
+                    }
+                )
+            }
+        }
+    }
+
+    fun syncAlarmAssets() {
+        viewModelScope.launch {
+            extras.update { it.copy(assetSyncBusy = true, snackbar = "Pobieranie paczki alarmów…") }
+            val result = assetSync.sync(manual = true)
+            extras.update {
+                it.copy(
+                    assetSyncBusy = false,
+                    snackbar = result.message
+                )
+            }
+        }
+    }
+
+    fun confirmAndStartAlarm(type: AlarmType, drill: Boolean, pin: String): Boolean {
+        val expected = extras.value.let {
+            // sync read — use runBlocking-free cached from last settings via blocking first in launch
+            true
+        }
+        var ok = false
+        kotlinx.coroutines.runBlocking {
+            val settings = settingsRepo.settings.first()
+            ok = pin == settings.alarmPin
+            if (ok) {
+                AlarmPlayerService.start(getApplication(), type, drill)
+                extras.update { it.copy(snackbar = "Uruchomiono: ${type.label}") }
+            }
+        }
+        return ok && expected
+    }
+
+    fun stopAlarm() {
+        AlarmPlayerService.stop(getApplication())
+        extras.update { it.copy(snackbar = "Alarm zatrzymany") }
+    }
+
     fun ringNow(trackId: Long?, durationSeconds: Int = 15) {
         viewModelScope.launch {
+            if (AlarmState.isActive) {
+                extras.update { it.copy(snackbar = "Alarm aktywny — dzwonek zablokowany") }
+                return@launch
+            }
             val track = trackId?.let { db.trackDao().getById(it) }
                 ?: db.trackDao().getAll().firstOrNull()
             val path = track?.filePath
@@ -233,7 +321,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             extras.update { it.copy(otaBusy = true) }
             when (val result = UpdateChecker(getApplication()).checkForUpdates(manual)) {
                 is UpdateResult.Available -> {
-                    // Nie instaluj automatycznie — tylko powiadom (instalacja ręczna / force dialog).
                     extras.update {
                         it.copy(
                             snackbar = "Dostępna ${result.info.versionName}. Zainstaluj w Ustawieniach."
@@ -270,6 +357,27 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val autoTimeEnabled: Boolean,
         val isDeviceOwner: Boolean,
         val otaBusy: Boolean,
-        val snackbar: String?
+        val snackbar: String?,
+        val assetSyncBusy: Boolean
     )
+}
+
+/** combine of 7 flows — Array transform */
+private inline fun <T1, T2, T3, T4, T5, T6, T7, R> combine(
+    f1: kotlinx.coroutines.flow.Flow<T1>,
+    f2: kotlinx.coroutines.flow.Flow<T2>,
+    f3: kotlinx.coroutines.flow.Flow<T3>,
+    f4: kotlinx.coroutines.flow.Flow<T4>,
+    f5: kotlinx.coroutines.flow.Flow<T5>,
+    f6: kotlinx.coroutines.flow.Flow<T6>,
+    f7: kotlinx.coroutines.flow.Flow<T7>,
+    crossinline transform: suspend (Array<*>) -> R
+): kotlinx.coroutines.flow.Flow<R> {
+    return kotlinx.coroutines.flow.combine(f1, f2, f3, f4, f5) { a, b, c, d, e ->
+        arrayOf<Any?>(a, b, c, d, e)
+    }.let { firstFive ->
+        kotlinx.coroutines.flow.combine(firstFive, f6, f7) { arr, s6, s7 ->
+            transform(arrayOf(arr[0], arr[1], arr[2], arr[3], arr[4], s6, s7))
+        }
+    }
 }

@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -35,6 +36,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import pl.szkola.radiowezel.ui.AppViewModel
+import pl.szkola.radiowezel.ui.screens.AlarmsScreen
 import pl.szkola.radiowezel.ui.screens.HolidaysScreen
 import pl.szkola.radiowezel.ui.screens.ScheduleScreen
 import pl.szkola.radiowezel.ui.screens.SettingsScreen
@@ -45,6 +47,7 @@ import pl.szkola.radiowezel.ui.theme.InkDim
 import pl.szkola.radiowezel.ui.theme.PanelBg
 import pl.szkola.radiowezel.ui.theme.PanelLine
 import pl.szkola.radiowezel.ui.theme.RadiowezelTheme
+import pl.szkola.radiowezel.ui.theme.Warn
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AppViewModel by viewModels()
@@ -107,24 +110,41 @@ class MainActivity : ComponentActivity() {
                                 unselectedIconColor = InkDim,
                                 unselectedTextColor = InkDim
                             )
-                            data class Tab(val id: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+                            data class Tab(
+                                val id: String,
+                                val label: String,
+                                val icon: androidx.compose.ui.graphics.vector.ImageVector,
+                                val selectedColor: androidx.compose.ui.graphics.Color? = null
+                            )
                             val tabs = listOf(
                                 Tab("status", "Status", Icons.Default.Home),
                                 Tab("schedule", "Plan", Icons.Default.CalendarMonth),
+                                Tab("alarms", "Alarmy", Icons.Default.Warning, Warn),
                                 Tab("tracks", "Utwory", Icons.Default.LibraryMusic),
                                 Tab("holidays", "Święta", Icons.Default.EventBusy),
                                 Tab("settings", "Ustaw.", Icons.Default.Settings)
                             )
                             tabs.forEach { tab ->
+                                val selected = route == tab.id
                                 NavigationBarItem(
-                                    selected = route == tab.id,
+                                    selected = selected,
                                     onClick = {
                                         navController.navigate(tab.id) {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
                                     },
-                                    icon = { Icon(tab.icon, null) },
+                                    icon = {
+                                        Icon(
+                                            tab.icon,
+                                            null,
+                                            tint = when {
+                                                selected && tab.selectedColor != null -> tab.selectedColor
+                                                selected -> Amber
+                                                else -> InkDim
+                                            }
+                                        )
+                                    },
                                     label = { Text(tab.label) },
                                     colors = colors
                                 )
@@ -132,14 +152,11 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { padding ->
-                    Box(
-                        Modifier
-                            .padding(padding)
-                            .fillMaxSize()
-                    ) {
+                    Box(Modifier.padding(padding).fillMaxSize()) {
                         NavHost(navController, startDestination = "status") {
                             composable("status") { StatusScreen(state, viewModel) }
                             composable("schedule") { ScheduleScreen(state, viewModel) }
+                            composable("alarms") { AlarmsScreen(state, viewModel) }
                             composable("tracks") { TracksScreen(state, viewModel) }
                             composable("holidays") { HolidaysScreen(state, viewModel) }
                             composable("settings") { SettingsScreen(state, viewModel) }

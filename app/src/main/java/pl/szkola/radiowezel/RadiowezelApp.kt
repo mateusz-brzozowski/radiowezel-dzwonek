@@ -11,7 +11,8 @@ import kotlinx.coroutines.launch
 import pl.szkola.radiowezel.data.SchoolSchedule
 import pl.szkola.radiowezel.data.SettingsRepository
 import pl.szkola.radiowezel.data.db.AppDatabase
-import pl.szkola.radiowezel.ota.UpdateChecker
+import pl.szkola.radiowezel.ota.AssetSync
+import pl.szkola.radiowezel.remote.CommandListener
 import pl.szkola.radiowezel.scheduler.BellScheduler
 import pl.szkola.radiowezel.util.PolishHolidays
 import java.time.LocalDate
@@ -22,6 +23,7 @@ class RadiowezelApp : Application() {
         private set
     lateinit var settingsRepository: SettingsRepository
         private set
+    private var commandListener: CommandListener? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -31,10 +33,31 @@ class RadiowezelApp : Application() {
         applicationScope.launch {
             // Clear stuck force-OTA flag (was causing install/restart loops with Device Owner).
             settingsRepository.setPendingForceUpdate(false)
+            settingsRepository.ensureDeviceId()
             seedHolidaysIfNeeded()
             applySchoolScheduleIfNeeded()
             BellScheduler(this@RadiowezelApp).rescheduleAll()
-            // OTA only from UI / daily — not on every cold start while recovering from a bad update.
+            // Alarm asset pack (separate from APK OTA)
+            try {
+                AssetSync(this@RadiowezelApp).sync(manual = false)
+            } catch (_: Exception) {
+            }
+            startRemoteIfEnabled()
+        }
+    }
+
+    fun startRemoteIfEnabled() {
+        applicationScope.launch {
+            val cfg = settingsRepository.settings.first()
+            if (!cfg.firebaseEnabled) {
+                commandListener?.stop()
+                commandListener = null
+                return@launch
+            }
+            if (commandListener == null) {
+                commandListener = CommandListener(this@RadiowezelApp)
+            }
+            commandListener?.start()
         }
     }
 
@@ -50,7 +73,6 @@ class RadiowezelApp : Application() {
         val settings = settingsRepository.settings.first()
         if (settings.scheduleTemplateVersion >= SchoolSchedule.TEMPLATE_VERSION) return
         val tracks = database.trackDao().getAll()
-        // Apply when tracks exist (wiosna/chopin) or always replace empty/old schedule on this update
         database.bellEventDao().deleteAll()
         SchoolSchedule.buildEvents(tracks).forEach { database.bellEventDao().upsert(it) }
         settingsRepository.setScheduleTemplateVersion(SchoolSchedule.TEMPLATE_VERSION)
@@ -64,6 +86,13 @@ class RadiowezelApp : Application() {
                 getString(R.string.notification_channel_status),
                 NotificationManager.IMPORTANCE_LOW
             )
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(
+                "school_alarms",
+                "Alarmy szkolne",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { setSound(null, null) }
         )
     }
 }

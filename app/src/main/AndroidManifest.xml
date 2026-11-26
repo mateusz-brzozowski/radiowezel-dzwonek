@@ -43,6 +43,11 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <service
+            android:name=".player.AlarmPlayerService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
         <receiver
             android:name=".scheduler.BellAlarmReceiver"
             android:exported="false" />

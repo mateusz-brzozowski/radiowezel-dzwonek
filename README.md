@@ -2,6 +2,8 @@
 
 Aplikacja Android (min. Android 8.0) na tablet w radiowęźle szkolnym. O zaplanowanych godzinach odtwarza lokalny utwór przez ustalony czas (start/koniec przerwy). Harmonogram: jeden szablon dnia, aktywny pon–pt; soboty, niedziele i święta są pomijane.
 
+Od **1.2.0**: lokalne alarmy szkolne (tony + komunikaty PL), paczka dźwięków OTA (`assets-v1`) oraz opcjonalne zdalne sterowanie przez Firebase + panel WWW.
+
 ## Wymagania
 
 - Android Studio Ladybug+ / JDK 17
@@ -16,81 +18,75 @@ gradlew.bat assembleRelease
 APK: `app\build\outputs\apk\release\app-release.apk`
 
 Repo OTA: https://github.com/mateusz-brzozowski/radiowezel-dzwonek  
-Domyślny `version.json`: https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/version.json
+Domyślny `version.json`: https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/version.json  
+Manifest assetów: https://raw.githubusercontent.com/mateusz-brzozowski/radiowezel-dzwonek/master/updates/assets.json
 
 ### Publikacja nowej wersji (OTA)
 
 ```powershell
-.\scripts\publish-release.ps1 -VersionName 1.1.0 -VersionCode 2 -Changelog "Opis" -Force
+.\scripts\publish-release.ps1 -VersionName 1.2.0 -VersionCode 5 -Changelog "Opis"
 ```
 
-### Device Owner (ADB)
+`force: true` **nie** używamy przy tym wdrożeniu (unika pętli instalacji na Device Owner).
 
-1. Factory reset tabletu, **bez** logowania na konto Google.
-2. Włącz debugowanie USB, podłącz do PC.
-3. Uruchom:
+### Publikacja paczki alarmów
+
+```powershell
+.\scripts\generate-alarm-voices.ps1   # tony + Edge TTS
+.\scripts\publish-assets.ps1          # release assets-v1
+```
+
+## Pierwszy setup na tablecie
+
+1. Zainstaluj APK i otwórz aplikację.
+2. **Wyłącz optymalizację baterii** (Status / Ustawienia).
+3. Na Huawei: autostart + chronione aplikacje.
+4. Upewnij się, że **automatyczna data i czas** są włączone.
+5. Zaimportuj utwory MP3 (Utwory) → **Wczytaj plan lekcji szkoły**.
+6. **Ustawienia → Pobierz / odśwież paczkę alarmów** (postęp „Paczka alarmów n/14”).
+7. Zakładka **Alarmy**: ustaw tryb Ćwiczenie, PIN (domyślnie `1234`), test na niskiej głośności, STOP.
+
+### Test regresji alarm vs dzwonek
+
+1. Uruchom **Test systemu** z zakładki Alarmy.
+2. W trakcie alarmu „Dzwoń teraz” / zaplanowany dzwonek **nie** gra.
+3. STOP → harmonogram wraca.
+
+## Alarmy — skrót
+
+| Element | Opis |
+|---------|------|
+| Ćwiczenie / Prawdziwy | Wybór komunikatu (np. pożar: drill vs real) |
+| PIN | 4–6 cyfr w DataStore (Ustawienia) |
+| STOP | Zawsze widoczny; też w notyfikacji |
+| AssetSync | Pobiera MP3 z GitHub Releases, weryfikuje SHA-256 → `filesDir/alarms/` |
+
+Generowanie lokalne: `scripts/generate_alarm_tones.py`, `scripts/generate_alarm_voices.py` (Edge TTS: Zofia/Marek).
+
+## Zdalne sterowanie (Firebase)
+
+1. Utwórz projekt Firebase: **Authentication** (e-mail/hasło) + **Realtime Database**.
+2. Wgraj reguły z `firebase/database.rules.json`.
+3. Utwórz konta: dyrektor (panel) + konto urządzenia (tablet).
+4. Wypełnij `app/src/main/assets/firebase_config.json` (apiKey, appId, databaseURL, deviceEmail/Password).
+5. W aplikacji: Ustawienia → skopiuj **Device ID** → włącz **Zdalne sterowanie**.
+6. Panel: `web/` — skopiuj `.env.example` → `.env`, `npm install && npm run build`, hostuj (`firebase deploy --only hosting` z katalogu `firebase/` albo dowolny HTTPS).
+
+Ścieżki RTDB: `devices/{deviceId}/presence|command|ack`, audyt w `audit/`.
+
+## Device Owner (ADB)
 
 ```powershell
 .\scripts\setup-device-owner.ps1
 ```
-
-## Pierwszy setup na tablecie (ważne dla niezawodności)
-
-1. Zainstaluj APK i otwórz aplikację.
-2. **Wyłącz optymalizację baterii** (przycisk na Statusie / w Ustawieniach).
-3. Na Huawei / EMUI:
-   - Ustawienia → Bateria → uruchamianie aplikacji → **Radiowęzeł** → ręczne zarządzanie → włącz autostart, uruchamianie w tle, drugorzędne uruchamianie.
-   - Dodaj aplikację do **chronionych aplikacji** (Protected Apps), jeśli dostępne.
-4. Upewnij się, że **automatyczna data i czas** są włączone.
-5. Podłącz tablet do stałego zasilania.
-6. Zaimportuj utwory MP3 (zakładka Utwory) i dodaj godziny w Planie.
-7. Użyj **Dzwoń teraz**, żeby sprawdzić wyjście audio radiowęzła.
-
-### Opcjonalnie: Device Owner + kiosk (najwyższa odporność)
-
-Po **factory reset** (bez konta Google na urządzeniu):
-
-```bat
-adb install app-debug.apk
-adb shell dpm set-device-owner pl.szkola.radiowezel/.util.AdminReceiver
-```
-
-Potem w Ustawieniach aplikacji włącz **tryb kiosku**. Device Owner pozwala też na cichą instalację OTA.
-
-## Aktualizacje OTA (GitHub Releases)
-
-1. Utwórz publiczne repozytorium.
-2. Wrzuć release z plikiem `app-release.apk`.
-3. Opublikuj `version.json` (np. w `updates/` na branchu `main` albo jako asset releasu), np.:
-
-```json
-{
-  "versionCode": 2,
-  "versionName": "1.1.0",
-  "apkUrl": "https://github.com/ORG/REPO/releases/download/v1.1.0/app-release.apk",
-  "force": true,
-  "changelog": "Opis zmian"
-}
-```
-
-4. W aplikacji (Ustawienia) wklej URL do `version.json`, np.  
-   `https://raw.githubusercontent.com/ORG/REPO/main/updates/version.json`
-5. Tablet sprawdza aktualizacje przy starcie i raz dziennie; przycisk **Sprawdź aktualizację** wymusza od razu. Przy `"force": true` blokuje UI do instalacji.
-
-## Architektura niezawodności
-
-- `AlarmManager.setAlarmClock` — alarm o najwyższym priorytecie systemowym
-- Watchdog co ~20 min — ponownie ustawia następny dzwonek
-- `BootReceiver` — po restarcie tabletu odtwarza harmonogram
-- Foreground Service + `USAGE_ALARM` podczas odtwarzania
-- Pliki audio lokalne (dzwonek nie zależy od Wi‑Fi w momencie grania)
 
 ## Ekrany
 
 | Zakładka | Funkcja |
 |----------|---------|
 | Status | Następny dzwonek, stan baterii/OTA, test |
-| Plan | CRUD godzin dzwonków (szablon dnia) |
+| Plan | CRUD godzin dzwonków |
+| Alarmy | Typy zagrożeń, ćwiczenie/prawdziwy, PIN, STOP |
 | Utwory | Import / usuwanie MP3 |
-| Święta | Dni wolne (wbudowane PL + własne) |
-| Ustawienia | OTA, głośność, Huawei, kiosk |
+| Święta | Dni wolne (PL + własne) |
+| Ustawienia | OTA, paczka alarmów, PIN, Firebase, Huawei, kiosk |

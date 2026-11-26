@@ -1,0 +1,103 @@
+{
+  "bundleVersion": 1,
+  "files": [
+    {
+      "id": "tone_modulated_announce",
+      "path": "alarms/tones/tone_modulated_announce.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/tone_modulated_announce.mp3",
+      "sha256": "cc68955c4f31fc0d2edd0c83c141e1f08011398219eaecf580827c1c21983924",
+      "kind": "alarm_tone"
+    },
+    {
+      "id": "tone_continuous_clear",
+      "path": "alarms/tones/tone_continuous_clear.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/tone_continuous_clear.mp3",
+      "sha256": "f70096cadfe7127ba5acf87b7f351b455967c7523c2c3bef20b53c9c8fe00ba3",
+      "kind": "alarm_tone"
+    },
+    {
+      "id": "tone_evacuate",
+      "path": "alarms/tones/tone_evacuate.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/tone_evacuate.mp3",
+      "sha256": "34cf35718fe5e5375fbf63639c03d2aacb8082ba1a5b98268d324c4d3f9109b1",
+      "kind": "alarm_tone"
+    },
+    {
+      "id": "tone_lockdown",
+      "path": "alarms/tones/tone_lockdown.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/tone_lockdown.mp3",
+      "sha256": "bdf8b81b4eec283a780fd3e73ab06468b133e52450571faab3e922325ee68dc5",
+      "kind": "alarm_tone"
+    },
+    {
+      "id": "tone_shelter",
+      "path": "alarms/tones/tone_shelter.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/tone_shelter.mp3",
+      "sha256": "ca62ca083e088b956afd495ab91b648c185f4574dd4487c64ea6c3926f4631f8",
+      "kind": "alarm_tone"
+    },
+    {
+      "id": "tone_bomb_chime",
+      "path": "alarms/tones/tone_bomb_chime.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/tone_bomb_chime.mp3",
+      "sha256": "b04c7342d6a16efc8c86b62f0e4ad1d3ef3ae5a23444709f9b86b44c31ad5a3a",
+      "kind": "alarm_tone"
+    },
+    {
+      "id": "voice_evac_fire",
+      "path": "alarms/voices/voice_evac_fire.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_evac_fire.mp3",
+      "sha256": "5cd77c7b0f28675739502e701de1e838f5358f5864ddcec69e21a0c658bfa67f",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_evac_drill",
+      "path": "alarms/voices/voice_evac_drill.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_evac_drill.mp3",
+      "sha256": "2744d229fa484b81ee599ad7f71cd5589526576b39c7c4068feeb6cdc813b201",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_bomb",
+      "path": "alarms/voices/voice_bomb.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_bomb.mp3",
+      "sha256": "712e5bee4ede337ab222c3a1cca5a76b68a7ad94b650d5f3cb78f32bec681fa7",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_lockdown",
+      "path": "alarms/voices/voice_lockdown.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_lockdown.mp3",
+      "sha256": "ee39743091946cd812c25586e7089dc72845be0c00f45b13f10c69a53b804c19",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_shelter",
+      "path": "alarms/voices/voice_shelter.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_shelter.mp3",
+      "sha256": "13279f5cee032c3957cbd1dc1544ae8252c94e944b06640fc6e65fb6c1f328bc",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_air_raid",
+      "path": "alarms/voices/voice_air_raid.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_air_raid.mp3",
+      "sha256": "ee5f2d8c1f9f79ed949be2eb31fba86da7933a9f57395ce34cc57c165c8a9f7f",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_all_clear",
+      "path": "alarms/voices/voice_all_clear.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_all_clear.mp3",
+      "sha256": "4e43308997fab4ceb9529445c570bf01adcd1ed17cd50d70d581f2d0e32291b9",
+      "kind": "alarm_voice"
+    },
+    {
+      "id": "voice_test_short",
+      "path": "alarms/voices/voice_test_short.mp3",
+      "url": "https://github.com/mateusz-brzozowski/radiowezel-dzwonek/releases/download/assets-v1/voice_test_short.mp3",
+      "sha256": "a127fae0de837983022fd7d7e544a16757618ad9e4f3f3bcd95d366b27d5bdf9",
+      "kind": "alarm_voice"
+    }
+  ]
+}
